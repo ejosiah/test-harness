@@ -79,7 +79,7 @@ object HttpClient{
     implicit val ec = ExecutionContext.global
    // val f: Future[Result] = HttpClient.get("http://localhost:10000/?postcode=ZZ01%201ZZ")
     val headers = Map("X-Hmrc-Origin" -> "pac")
-    val f: Future[Result] = HttpClient.get("http://localhost:10004/uk/addresses?postcode=ZZ01%201ZZ", headers)
+    val f: Future[Result] = HttpClient.get("http://localhost:10001/uk/addresses?postcode=ZZ01%201ZZ", headers)
 
 
     val result: Result = Await.result(f, 1 minute)

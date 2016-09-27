@@ -42,8 +42,6 @@ class Server(val port: Int, val name: String, action: => Action)(implicit ec: Ex
         .channel(classOf[NioServerSocketChannel])
         .childHandler { ch: Channel =>
           ch.pipeline()
-            .addLast(new RequestLogger)
-            .addLast(new ResponseLogger)
             .addLast(new HttpServerCodec)
             .addLast(new HttpObjectAggregator(65536))
             .addLast(new HttpRequestHandler(action))

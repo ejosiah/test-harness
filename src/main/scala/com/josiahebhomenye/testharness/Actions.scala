@@ -6,9 +6,11 @@ import io.netty.buffer.{ByteBuf, Unpooled}
 import io.netty.channel.ChannelHandlerContext
 import io.netty.handler.codec.http.{HttpResponse, HttpRequest}
 import io.netty.handler.codec.http.HttpHeaderNames._
+import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.Random
+import com.josiahebhomenye.testharness.NettyToScalaHelpers._
 
 
 case class ResponseMap(path: String, method: String, response: String, contentType: Option[String] = None, responseHeaders: Map[String, String] = Map())
@@ -64,12 +66,17 @@ class SlowResponseAction(override val dataProvider: HttpDataSource, val delay: (
   }
 }
 
+class HeadNoBodyAction(override val dataProvider: HttpDataSource) extends Action {
+  override def process(ctx: ChannelHandlerContext, req: HttpRequest, data: ByteBuf): Unit = ctx.writeAndFlush(Unpooled.buffer())
+}
+
 class ConnectionTerminatorAction(override val dataProvider: HttpDataSource) extends Action {
   override def process(ctx: ChannelHandlerContext, req: HttpRequest, data: ByteBuf): Unit = {
     val terminationPoint = data.readableBytes()/2
     val halfWay = data.copy(0, terminationPoint)
-    ctx.writeAndFlush(halfWay)
-    ctx.channel().close()
+    ctx.writeAndFlush(halfWay).onSuccess{
+      case ch => ch.close()
+    }(ExecutionContext.global)
   }
 }
 
@@ -81,13 +88,14 @@ object Actions {
   def apply(name: String, config: Config) : Action = name match {
     case "slowResponse" => SlowResponseAction(dataSource(config), config)
     case "connectionTerminator" => new ConnectionTerminatorAction(dataSource(config))
-    case "sendHeadWithNoBody" => new DefaultAction(EmptyDataSource(config))
+    case "sendHeadWithNoBody" => new HeadNoBodyAction(dataSource(config))
     case _ => new DefaultAction(dataSource(config))
   }
 
   def dataSource(config: Config) = config.getString("source") match {
     case "responseMap" => new RequestBasedDataSource(responses)
     case "random" => new RandomDataSource(config.getInt("size"))
-    case "proxy" => new ProxyDataSource(config.getString("proxy.protocol"), config.getString("proxy.host"), config.getInt("proxy.port"))
+    case "proxy" => new ProxyDataSource(config.getString("proxy.protocol")
+      , config.getString("proxy.host"), config.getInt("proxy.port"), config.getString("proxy.context"))
   }
 }

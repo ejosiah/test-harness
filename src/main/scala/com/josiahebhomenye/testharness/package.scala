@@ -86,13 +86,6 @@ package object testharness {
   }
   object NettyToScalaHelpers{
 
-    object NullExecutionContext extends ExecutionContext{
-
-      override def execute(runnable: Runnable): Unit = ()
-
-      override def reportFailure(cause: Throwable): Unit = ()
-    }
-
     implicit def convert(cf: ChannelFuture) : Future[Channel] = new CFFuture(cf)
 
     implicit def convert[C <: Channel](f: C => ChannelPipeline) : ChannelInitializer[C] = new ChannelInitializer[C] {

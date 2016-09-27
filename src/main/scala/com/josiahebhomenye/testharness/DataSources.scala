@@ -27,9 +27,10 @@ import com.josiahebhomenye.testharness.DataSources._
 
 trait DataSource[T] extends ((T) => Option[(Option[ContentType], Headers, ByteBuf)])
 
+
 class RequestBasedDataSource(responses: Map[(String, String), ResponseMap]) extends HttpDataSource{
 
-  override def apply(req: HttpRequest): Option[(Option[ContentType], Headers, ByteBuf)] = {
+  def apply(req: HttpRequest): Option[(Option[ContentType], Headers, ByteBuf)] = {
     val key = (req.uri(), req.method().toString)
     responses.get(key).map{ resp =>
       (resp.contentType, resp.responseHeaders, Unpooled.copiedBuffer(resp.response, CharsetUtil.UTF_8))
@@ -84,11 +85,13 @@ class EmptyDataSource(contentType: Option[ContentType] = None, headers: Headers 
     Some((contentType, headers, Unpooled.EMPTY_BUFFER))
 }
 
-class ProxyDataSource(protocol: String, host: String, port: Int) extends HttpDataSource{
+class ProxyDataSource(protocol: String, host: String, port: Int, context: String = "") extends HttpDataSource{
   implicit val ec = ExecutionContext.global
 
+
   override def apply(req: HttpRequest): Option[(Option[ContentType], Headers, ByteBuf)] = {
-    val url = s"$protocol://$host:$port${req.uri()}"
+    val ctx = if(context == "/") "" else context
+    val url = s"$protocol://$host:$port$ctx${req.uri()}"
     val result = req.method().toString match {
       case "GET" =>
         HttpClient.get(url, req.headers()).map{ result =>
